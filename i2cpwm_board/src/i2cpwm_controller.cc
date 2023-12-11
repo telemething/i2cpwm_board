@@ -143,12 +143,12 @@ static float _abs(float v1)
   return v1;
 }
 
-static float _min(float v1, float v2)
+/*static float _min(float v1, float v2)
 {
   if (v1 > v2)
     return v2;
   return v1;
-}
+}*/
 
 static float _max(float v1, float v2)
 {
@@ -157,7 +157,7 @@ static float _max(float v1, float v2)
   return v1;
 }
 
-static float _absmin(float v1, float v2)
+/*static float _absmin(float v1, float v2)
 {
   float a1, a2;
   float sign = 1.0;
@@ -181,7 +181,7 @@ static float _absmax(float v1, float v2)
   if (a1 < a2)
     return (sign * a2);
   return v1;
-}
+}*/
 
 /**
  \private Method to smooth a speed value.
@@ -192,12 +192,12 @@ static float _absmax(float v1, float v2)
  @param speed An int value (±1.0) indicating original speed.
  @returns An integer value (±1.0) smoothed for more gentle acceleration.
  */
-static int _smoothing(float speed)
+/*static int _smoothing(float speed)
 {
-  /* if smoothing is desired, then remove the commented code  */
+  // if smoothing is desired, then remove the commented code  
   // speed = (cos(_PI*(((float)1.0 - speed))) + 1) / 2;
   return speed;
-}
+}*/
 
 /**
    \private Method to convert meters per second to a proportional value in the range of ±1.0.
@@ -243,7 +243,7 @@ static void _set_pwm_frequency(int freq)
 {
   unsigned char prescale;
   char oldmode, newmode;
-  int res;
+  //int res;
 
   _pwm_frequency = freq; // Save to global.
 
@@ -257,11 +257,15 @@ static void _set_pwm_frequency(int freq)
   //    prescale = floor(prescaleval + 0.5);
   //    // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Final pre-scale: %d", prescale);
   // Optimized to :
+  struct timespec sleepTime;
+  sleepTime.tv_sec = 1;
+  sleepTime.tv_nsec = 0;
+
   prescale = (unsigned char)(25000000.0f / (4096.0f * freq) - 0.5f);
 
   RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Setting PWM frequency to %d Hz", freq);
 
-  nanosleep((const struct timespec[]){{1, 000000L}}, NULL);
+  nanosleep(&sleepTime, NULL);
 
   oldmode = i2c_smbus_read_byte_data(_controller_io_handle, __MODE1);
   newmode = (oldmode & 0x7F) | 0x10; // Sleep.
@@ -277,7 +281,10 @@ static void _set_pwm_frequency(int freq)
 
   RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Set PWM frequency to %d Hz ok", freq);
 
-  nanosleep((const struct timespec[]){{0, 5000000L}}, NULL); // Sleep 5 microseconds.
+  sleepTime.tv_sec = 0;
+  sleepTime.tv_nsec = 5000000L;
+
+  nanosleep(&sleepTime, NULL); // Sleep 5 microseconds.
 
   if (0 > i2c_smbus_write_byte_data(_controller_io_handle, __MODE1, oldmode | 0x80))
     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Unable to restore PWM controller to active mode");
@@ -299,7 +306,7 @@ static void _set_pwm_interval_all(int start, int end)
     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Internal error - invalid active board number %d :: PWM board numbers must be between 1 and 62", _active_board);
     return;
   }
-  int board = _active_board - 1;
+  //int board = _active_board - 1;
 
   if (0 > i2c_smbus_write_byte_data(_controller_io_handle, __ALL_CHANNELS_ON_L, start & 0xFF))
     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error setting PWM start low byte for all servos on board %d", _active_board);
@@ -352,7 +359,11 @@ static void _set_active_board(int board)
       if (0 > i2c_smbus_write_byte_data(_controller_io_handle, __MODE1, __ALLCALL))
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to enable ALLCALL for PWM channels");
 
-      nanosleep((const struct timespec[]){{0, 5000000L}}, NULL); // Sleep 5 microseconds, wait for osci.
+      struct timespec sleepTime;
+      sleepTime.tv_sec = 0;
+      sleepTime.tv_nsec = 5000000L;
+
+      nanosleep(&sleepTime, NULL); // Sleep 5 microseconds, wait for osci.
 
       mode1res = i2c_smbus_read_byte_data(_controller_io_handle, __MODE1);
       mode1res = mode1res & ~__SLEEP; //                 # Wake up (reset sleep).
@@ -360,7 +371,7 @@ static void _set_active_board(int board)
       if (0 > i2c_smbus_write_byte_data(_controller_io_handle, __MODE1, mode1res))
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to recover from low power mode");
 
-      nanosleep((const struct timespec[]){{0, 5000000L}}, NULL); // sleep 5microsec, wait for osci
+      nanosleep(&sleepTime, NULL); // sleep 5microsec, wait for osci
 
       // The first time we activate a board, we mark it and set all of its servo channels to 0
       _set_pwm_interval_all(0, 0);
@@ -556,8 +567,8 @@ static int _config_drive_mode(std::string mode, float rpm, float radius, float t
  */
 static void _init(const char *filename)
 {
-  int res;
-  char mode1res;
+  //int res;
+  //char mode1res;
   int i;
 
   /* Initialize all of the global data objects. */
@@ -815,7 +826,7 @@ bool set_pwm_frequency(const std::shared_ptr<i2cpwm_board_msgs::srv::IntValue::R
 bool config_servos(const std::shared_ptr<i2cpwm_board_msgs::srv::ServosConfig::Request> req, std::shared_ptr<i2cpwm_board_msgs::srv::ServosConfig::Response> res)
 {
   /* This service works on the active_board. */
-  int i;
+  unsigned int i;
 
   res->error = 0;
 
@@ -843,7 +854,7 @@ bool config_drive_mode(const std::shared_ptr<i2cpwm_board_msgs::srv::DriveMode::
 {
   res->error = 0;
 
-  int i;
+  unsigned int i;
 
   if ((res->error = _config_drive_mode(req->mode, req->rpm, req->radius, req->track, req->scale)))
     return true;
@@ -878,6 +889,9 @@ bool config_drive_mode(const std::shared_ptr<i2cpwm_board_msgs::srv::DriveMode::
  */
 bool stop_servos(const std::shared_ptr<std_srvs::srv::Empty::Request> req, std::shared_ptr<std_srvs::srv::Empty::Response> res)
 {
+  (void)req;
+  (void)res;
+
   int save_active = _active_board;
   int i = 0;
 
@@ -893,7 +907,7 @@ bool stop_servos(const std::shared_ptr<std_srvs::srv::Empty::Request> req, std::
   return true;
 }
 
-static std::string _get_string_param(XmlRpc::XmlRpcValue obj, std::string param_name)
+/*static std::string _get_string_param(XmlRpc::XmlRpcValue obj, std::string param_name)
 {
   XmlRpc::XmlRpcValue &item = obj[param_name];
   if (item.getType() == XmlRpc::XmlRpcValue::TypeString)
@@ -921,7 +935,7 @@ static double _get_float_param(XmlRpc::XmlRpcValue obj, std::string param_name)
 
   RCLCPP_WARN(rclcpp::get_logger("rclcpp"), "invalid paramter type for %s - expected TypeDouble", param_name.c_str());
   return 0;
-}
+}*/
 
 static int _load_params(void)
 {
@@ -955,12 +969,12 @@ static int _load_params(void)
   return 0;
 }
 
-static int _load_params_orig(void)
+/*static int _load_params_orig(void)
 {
   //auto node = std::make_shared<i2cpwmNode>("i2cpwm_controller1");
 
   // Default I2C device on RPi2 and RPi3 = "/dev/i2c-1" Orange Pi Lite = "/dev/i2c-0".
-  node->declare_parameter("i2c_device_number", _controller_io_device /*, 1 */);
+  node->declare_parameter("i2c_device_number", _controller_io_device );
   std::stringstream device;
   device << "/dev/i2c-" << _controller_io_device;
   _init(device.str().c_str());
@@ -968,7 +982,7 @@ static int _load_params_orig(void)
   _set_active_board(1);
 
   int pwm;
-  node->declare_parameter("pwm_frequency", pwm /*, 50 */);
+  node->declare_parameter("pwm_frequency", pwm);
   _set_pwm_frequency(pwm);
 
   const char * node_namespace = node->get_namespace();
@@ -979,12 +993,12 @@ static int _load_params_orig(void)
 
   //printf("namespace = %s\n", namespace.c_str());
 
-  /*
+  
     // Note: servos are numbered sequntially with '1' being the first servo on board #1, '17' is the first servo on board #2.
-    servo_config:
-     - {servo: 1, center: 333, direction: -1, range: 100}
-     - {servo: 2, center: 336, direction: 1, range: 108}
-  */
+  //  servo_config:
+  //   - {servo: 1, center: 333, direction: -1, range: 100}
+  //   - {servo: 2, center: 336, direction: 1, range: 108}
+  
   // Attempt to load configuration for servos.
   if (node->has_parameter("servo_config"))
   {
@@ -1035,19 +1049,17 @@ static int _load_params_orig(void)
   else
     RCLCPP_DEBUG(rclcpp::get_logger("rclcpp"), "Parameter Server namespace[%s] does not contain 'servo_config", node->get_namespace());
 
-  /*
-    drive_config:
-        mode: mecanum
-      radius: 0.062
-      rpm: 60.0
-      scale: 0.3
-      track: 0.2
-      servos:
-          - {servo: 1, position: 1}
-          - {servo: 2, position: 2}
-          - {servo: 3, position: 3}
-          - {servo: 4, position: 4}
-  */
+  //  drive_config:
+  //      mode: mecanum
+  //    radius: 0.062
+  //    rpm: 60.0
+  //    scale: 0.3
+  //    track: 0.2
+  //    servos:
+  //        - {servo: 1, position: 1}
+  //        - {servo: 2, position: 2}
+  //        - {servo: 3, position: 3}
+  //       - {servo: 4, position: 4}
 
   // Attempt to load configuration for drive mode.
   if (node->has_parameter("drive_config"))
@@ -1105,7 +1117,7 @@ static int _load_params_orig(void)
   }
   else
     RCLCPP_DEBUG(rclcpp::get_logger("rclcpp"), "Parameter Server namespace[%s] does not contain 'drive_config", node->get_namespace());
-}
+}*/
 
 int main(int argc, char **argv)
 {
